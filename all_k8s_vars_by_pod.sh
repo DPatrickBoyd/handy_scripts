@@ -1,12 +1,17 @@
 #!/bin/bash
+
+# You need to have bash/*nix, jq and kubectl installed for this script to work. I currently use WSL with an http_proxy set to acces my clusters
+
 echo "This script will create a file that will contain sensitive information, please take care not to commit or share it with anyone!"
 echo -e
+
 # Prompt for cluster name
 read -p "Enter cluster name: " CLUSTER_NAME
 
 # Set current context to cluster name
 kubectl config use-context $CLUSTER_NAME
 CLUSTER=$CLUSTER_NAME
+
 # Prompt for namespace
 read -p "Enter namespace: " NAMESPACE
 
@@ -15,19 +20,22 @@ MY_NAMESPACE=$NAMESPACE
 
 
 DEPLOYMENT_LIST=$(kubectl get deployment -o name |  sed 's/deployment\.apps\///')
-# Set the name of the pod you want to describe
+# Set the name of the file, delete it if it exists already
 if [ -f "allpodinfo_$CLUSTER.txt" ]; then
     echo "File exists. Deleting..."
     rm "allpodinfo_$CLUSTER.txt"
     echo "File deleted."
 fi
+
+#feel free to take out these next 3 lines if there are no global configMaps that aren't assigned to a deployment directly which will be set under the pods json output spec.containers.env.name.valueFrom, where the other is set from spec.containers.envFrom
 echo "Global configMap:" >> allpodinfo_$CLUSTER.txt
-#feel free to take out this line if there are no global configMaps that aren't assigned to a deployment directly which will be set under spec.containers.env.name.valueFrom, where the other is set from spec.containers.envFrom
 kubectl get configmap cloud-global-config -o json -n $MY_NAMESPACE | jq '.data | to_entries | map("\(.key)=\(.value|tostring)") | .[]' -r >> allpodinfo_$CLUSTER.txt
 echo -e "\n" >> allpodinfo_$CLUSTER.txt
-#loop through all deployments, grab pod env vars, it was too hard to assign variables that are grabbed directly from configMaps (versus deployments that have configmaps assigned)
+
+#loop through all deployments, grab pod env vars, configMaps and secrets
 for NAME in $DEPLOYMENT_LIST
 do
+    # get the name of first pod of the deployment
     POD_NAME=$(kubectl get pod -n $MY_NAMESPACE  -l app=$NAME -o jsonpath="{.items[0].metadata.name}")
     echo "Getting information for $NAME by peeking at $POD_NAME"
     echo $NAME >> allpodinfo_$CLUSTER.txt

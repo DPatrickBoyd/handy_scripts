@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Change the date under CUTOFF_DATE to change how far back you want to delete
+# Install the GitHub CLI tool by following the instructions in the official documentation: https://cli.github.com/manual/installation
+# Make sure you auth first to github with 'gh auth login'
+
 REPO_OWNER="OWNER"
 REPO_NAME="REPO_NAME"
 CUTOFF_DATE=$(date --date='30 days ago' +'%Y-%m-%dT%H:%M:%SZ')
